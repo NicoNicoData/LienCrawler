@@ -60,10 +60,10 @@ def run(playwright, borough, block, lot):
     browser.close()
     return html_content
 
-def parse_bbl_result(html_content):
+def parse_bbl_result(html_content, property_name=None):
     """
     Parses the BBL search result HTML page and extracts Document IDs and Types.
-    Returns a list of dictionaries with 'DocumentId' and 'DocumentType'.
+    Returns a list of dictionaries with 'DocumentId', 'DocumentType', and optionally 'property_name'.
     """
     soup = BeautifulSoup(html_content, "html.parser")
     results = []
@@ -86,24 +86,28 @@ def parse_bbl_result(html_content):
         tds = tr.find_all("td", recursive=False)
         if len(tds) > 7:
             doc_type = tds[7].get_text(strip=True)
-            results.append({
+            doc_data = {
                 "DocumentId": doc_id,
                 "DocumentType": doc_type
-            })
+            }
+            if property_name is not None:
+                doc_data["property_name"] = property_name
+            results.append(doc_data)
             
     return results
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: python search_bbl.py <borough> <block> <lot>")
+    if len(sys.argv) < 4 or len(sys.argv) > 5:
+        print("Usage: python search_bbl.py <borough> <block> <lot> [property_name]")
         sys.exit(1)
         
     borough = sys.argv[1]
     block = sys.argv[2]
     lot = sys.argv[3]
+    property_name = sys.argv[4] if len(sys.argv) == 5 else f"{borough}-{block}-{lot}"
     
     with sync_playwright() as playwright:
         html_content = run(playwright, borough, block, lot)
-        documents = parse_bbl_result(html_content)
+        documents = parse_bbl_result(html_content, property_name=property_name)
         import pprint
         pprint.pprint(documents)
