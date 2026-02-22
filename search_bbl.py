@@ -111,6 +111,8 @@ if __name__ == "__main__":
         documents = parse_bbl_result(html_content, property_name=property_name)
         import csv
         writer = csv.writer(sys.stdout)
-        writer.writerow(["PropertyName", "DocumentType", "DocumentId"])
+        writer.writerow(["PropertyName", "DocumentType", "DocumentId", "DocumentLink"])
         for doc in documents:
-            writer.writerow([doc.get("property_name", ""), doc.get("DocumentType", ""), doc.get("DocumentId", "")])
+            doc_id = doc.get("DocumentId", "")
+            doc_link = f"https://a836-acris.nyc.gov/DS/DocumentSearch/DocumentImageView?doc_id={doc_id}" if doc_id else ""
+            writer.writerow([doc.get("property_name", ""), doc.get("DocumentType", ""), doc_id, doc_link])
