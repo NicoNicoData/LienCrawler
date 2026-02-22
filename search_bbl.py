@@ -1,5 +1,7 @@
 import sys
 import time
+import re
+from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 BOROUGH_MAP = {
@@ -53,8 +55,43 @@ def run(playwright, borough, block, lot):
     page.wait_for_url("**/DocumentSearch/BBLResult**", timeout=60000)
     
     print("Page loaded successfully!")
+    html_content = page.content()
     context.close()
     browser.close()
+    return html_content
+
+def parse_bbl_result(html_content):
+    """
+    Parses the BBL search result HTML page and extracts Document IDs and Types.
+    Returns a list of dictionaries with 'DocumentId' and 'DocumentType'.
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    results = []
+    
+    for tr in soup.find_all("tr"):
+        # The document id is often inside an onclick handler for a button named 'IMG' or similar 
+        # that calls JavaScript:go_image("...")
+        img_button = tr.find("input", {"name": "IMG"})
+        if not img_button:
+            continue
+            
+        onclick = img_button.get("onclick", "")
+        match = re.search(r"go_image\(\s*[\"']([^\"']+)[\"']\s*\)", onclick)
+        if not match:
+            continue
+            
+        doc_id = match.group(1)
+        
+        # In the ACRIS results table, Document Type is the 8th column (index 7)
+        tds = tr.find_all("td", recursive=False)
+        if len(tds) > 7:
+            doc_type = tds[7].get_text(strip=True)
+            results.append({
+                "DocumentId": doc_id,
+                "DocumentType": doc_type
+            })
+            
+    return results
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
@@ -66,4 +103,7 @@ if __name__ == "__main__":
     lot = sys.argv[3]
     
     with sync_playwright() as playwright:
-        run(playwright, borough, block, lot)
+        html_content = run(playwright, borough, block, lot)
+        documents = parse_bbl_result(html_content)
+        import pprint
+        pprint.pprint(documents)
