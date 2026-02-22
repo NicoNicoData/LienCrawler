@@ -109,5 +109,8 @@ if __name__ == "__main__":
     with sync_playwright() as playwright:
         html_content = run(playwright, borough, block, lot)
         documents = parse_bbl_result(html_content, property_name=property_name)
-        import pprint
-        pprint.pprint(documents)
+        import csv
+        writer = csv.writer(sys.stdout)
+        writer.writerow(["PropertyName", "DocumentType", "DocumentId"])
+        for doc in documents:
+            writer.writerow([doc.get("property_name", ""), doc.get("DocumentType", ""), doc.get("DocumentId", "")])
